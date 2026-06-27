@@ -1,0 +1,13 @@
+gymnasium>=0.29
+pettingzoo>=1.24
+supersuit>=3.9
+stable-baselines3>=2.3
+sb3-contrib>=2.3
+torch>=2.1
+pygame>=2.5
+numpy>=1.26
+tensorboard>=2.15
+imageio>=2.34
+imageio-ffmpeg>=0.4
+tqdm
+pyyaml

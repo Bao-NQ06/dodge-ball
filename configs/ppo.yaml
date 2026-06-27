@@ -1,0 +1,31 @@
+# PPO hyperparameters for Stable-Baselines3.
+# Mirrors the plan §7.4 starting values.
+ppo:
+  learning_rate: 3.0e-4
+  n_steps: 2048
+  batch_size: 4096
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  policy_kwargs:
+    net_arch: {pi: [256, 256], vf: [256, 256]}
+    activation_fn: torch.nn.Tanh
+
+training:
+  total_timesteps: 5000000
+  n_envs: 8
+  seed: 42
+  tensorboard_log: runs/
+
+curriculum:
+  initial_phase: 1
+  phases: [1, 2, 3, 4]
+  chunk_steps: 200000           # chunks per phase
+  snapshot_interval: 100000
+  opponent_swap_winrate: 0.7
+  opponent_pool_max: 12
+  latest_opponent_prob: 0.8

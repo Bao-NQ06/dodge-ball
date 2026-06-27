@@ -1,0 +1,96 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# ===== Virtualenvs / package managers =====
+venv/
+.venv/
+env/
+conda-env/
+
+# ===== Trained model artifacts (large, regenerable) =====
+models/*.zip
+models/*.pkl
+models/*.onnx
+models/*.vecnorm.json
+models/snapshots/
+models/elo.json
+
+# ===== Training outputs =====
+runs/
+logs/
+*.log
+*.tfevents.*
+tensorboard_logs/
+tb_logs/
+
+# ===== Generated media =====
+videos/
+recordings/
+plots/
+*.mp4
+*.gif
+
+# ===== Knowledge graph + agent tool caches =====
+.codegraph/
+graphify-out/
+
+# ===== Godot =====
+# Godot 4+ specific
+.godot/
+.import/
+addons/*/plugin.cfg.bak
+
+# Godot-specific ignores (imported resources)
+*.translation
+*.gd.uid
+
+# System/tool-specific editor folders
+.android/
+.web/
+.ios/
+
+# ===== IDEs =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== OS junk =====
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ===== Local user files =====
+.env
+.env.local
+*.local
+secrets.yaml
+config.local.yaml
+
+# ===== Notebooks =====
+.ipynb_checkpoints/
+
+# ===== Build / dist =====
+build/
+dist/
+*.spec
+
+# ===== Temp =====
+*.tmp
+*.bak
+*.orig

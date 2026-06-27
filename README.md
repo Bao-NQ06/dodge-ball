@@ -69,30 +69,6 @@ If those all pass, you're ready to train.
 
 ---
 
-## Play the game (Godot)
-
-The Godot 4 game is fully playable with built-in heuristic bots. You do NOT
-need a trained model to play.
-
-1. Download Godot 4.2+ from https://godotengine.org
-2. Open Godot → **Import** → select `godot-dodgeball/project.godot`
-3. Press **F5** (or click ▶ Play) to launch
-
-**Modes:**
-- **Single Player** — you vs AI bot (Easy / Normal / Hard)
-- **Watch AI vs AI** — two bots duel
-- **Local 2 Player** — two humans on one keyboard
-
-**Controls (Single Player):**
-- `WASD` — move
-- `Q` or `SPACE` — throw (must be holding the ball)
-- Mouse — aim direction
-- `R` — reset round, `ESC` — quit to menu
-
-See [`godot-dodgeball/README.md`](./godot-dodgeball/README.md) for full controls.
-
----
-
 ## Train an agent (Python)
 
 The training pipeline lives in `scripts/train.py`. It supports three modes:
@@ -230,12 +206,6 @@ dodge ball/
 │   ├── test_rewards.py            #   reward function + curriculum
 │   ├── test_env_api.py            #   PettingZoo parallel_api_test
 │   └── test_snapshot_opponent.py  #   self-play snapshot opponent obs shape
-│
-├── godot-dodgeball/               # Godot 4 arcade game
-│   ├── README.md                  #   game-specific docs
-│   ├── project.godot              #   project config + input map
-│   ├── scenes/                    #   TitleScreen / MainMenu / Match / ResultScreen
-│   └── scripts/                   #   game scripts (Agent / Ball / Arena / Match / etc.)
 │
 ├── models/                        # ← gitignored, created by training
 │   ├── *.zip                      #   trained PPO models

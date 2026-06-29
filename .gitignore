@@ -94,3 +94,7 @@ dist/
 *.tmp
 *.bak
 *.orig
+
+#Game
+godot-dodgeball/
+models/

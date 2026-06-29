@@ -72,9 +72,37 @@ def heuristic_dodger_bot(env, idx, learner_action=None) -> np.ndarray:
     return act
 
 
+def heuristic_holder_bot(env, idx, learner_action=None) -> np.ndarray:
+    """Picks up ball, then HOLDS for HOLD_TIME steps (no throw trigger),
+    then throws at opponent. Creates a sustained 'opp has the ball' window
+    so the learner can learn to back off and dodge -- versus the thrower
+    bots which grab-and-throw instantly."""
+    me = env.agents_state[idx]
+    opp = env.agents_state[1 - idx]
+    ball = env.ball
+    act = np.zeros(5, dtype=np.float32)
+    HOLD_TIME = 30
+
+    if ball.held_by == idx:
+        if getattr(env, "_holder_pickup_step", None) is None:
+            env._holder_pickup_step = env.step_count
+        held_for = env.step_count - env._holder_pickup_step
+        if held_for >= HOLD_TIME:
+            dx, dy = unit_vec(opp.x - me.x, opp.y - me.y)
+            act[2], act[3] = dx, dy
+            act[4] = 1.0
+        # else: hold -- act stays zero (no move, no throw trigger)
+    else:
+        env._holder_pickup_step = None
+        dx, dy = unit_vec(ball.x - me.x, ball.y - me.y)
+        act[0], act[1] = dx, dy
+    return act
+
+
 SCRIPTED_FUNCS = {
     "stationary": stationary_bot,
     "random": random_bot,
     "heuristic": heuristic_thrower_bot,
     "heuristic_dodger": heuristic_dodger_bot,
+    "heuristic_holder": heuristic_holder_bot,
 }

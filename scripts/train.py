@@ -61,7 +61,8 @@ def main():
     ap.add_argument("--num-envs", type=int, default=None)
     ap.add_argument("--mode", choices=["selfplay", "vs_bot"], default="selfplay")
     ap.add_argument("--opponent", default="stationary",
-                    help="For vs_bot mode: stationary/random/heuristic/heuristic_dodger")
+                    help="For vs_bot mode: "
+                         "stationary/random/heuristic/heuristic_dodger/heuristic_holder")
     ap.add_argument("--phase", type=int, default=None,
                     help="Skip curriculum, train this phase only")
     ap.add_argument("--seed", type=int, default=42)
@@ -69,6 +70,10 @@ def main():
     ap.add_argument("--save-path", default="models/dodgeball_final")
     ap.add_argument("--resume-from", default=None,
                     help="Path to a saved PPO model to resume from. Loads weights + VecNormalize stats.")
+    ap.add_argument("--snapshot-root", default="models/snapshots",
+                    help="Directory for opponent snapshots. Set per run (e.g. "
+                         "models/snapshots_v6) to avoid overwriting prior runs' "
+                         "checkpoints -- names are step-based and collide.")
     args = ap.parse_args()
 
     with open(args.config, "r", encoding="utf-8") as f:
@@ -81,6 +86,15 @@ def main():
         if act_name == "torch.nn.Tanh":
             import torch.nn as nn
             ppo_kwargs["policy_kwargs"]["activation_fn"] = nn.Tanh
+    # ent_coef: a float is constant; a dict {start, end} linearly anneals
+    # across the whole run. This SB3 version has no ent_coef schedule
+    # (self.ent_coef is a plain float used directly in the loss), so we set
+    # model.ent_coef ourselves each chunk for a monotonic global anneal.
+    _ec = ppo_kwargs.get("ent_coef")
+    _ec_anneal = None
+    if isinstance(_ec, dict):
+        _ec_anneal = (float(_ec["start"]), float(_ec["end"]))
+        ppo_kwargs["ent_coef"] = _ec_anneal[0]
     train_cfg = cfg["training"]
     curr_cfg = cfg["curriculum"]
 
@@ -99,7 +113,7 @@ def main():
 
     # Self-play setup
     opponent_pool = OpponentPool(
-        root="models/snapshots",
+        root=args.snapshot_root,
         max_size=curr_cfg["opponent_pool_max"],
         latest_prob=curr_cfg["latest_opponent_prob"],
     )
@@ -138,21 +152,32 @@ def main():
 
     cb = TensorboardCallback()
 
-    # Train through phases
-    steps_remaining = total_steps
+    # Train through phases. total_steps is split evenly across phases; on
+    # resume, phases whose range is already below cur_step are skipped.
     cur_step = model.num_timesteps if args.resume_from else 0
     if args.resume_from:
         print(f"Resuming at cur_step={cur_step}; will train until {total_steps}")
-        steps_remaining = max(0, total_steps - cur_step)
+
+    # Even per-phase budgets; the integer-division remainder goes to the last
+    # phase so the budgets sum to exactly total_steps.
+    per_phase = total_steps // len(phases)
+    budgets = [per_phase] * len(phases)
+    budgets[-1] += total_steps - per_phase * len(phases)
+
     t0 = time.time()
-    for phase in phases:
+    phase_start = 0
+    for phase, budget in zip(phases, budgets):
+        phase_end = phase_start + budget
+        if cur_step >= phase_end:
+            phase_start = phase_end
+            continue  # phase already completed before a resume
         env.venv.env_method("set_curriculum_phase", phase)
         env.venv.env_method("set_opponent_kind",
                             args.opponent if args.mode == "vs_bot" else "self")
-        print(f"=== Phase {phase} ===")
+        print(f"=== Phase {phase} ({phase_start}-{phase_end}) ===")
 
-        while steps_remaining > 0:
-            this_chunk = min(chunk_steps, steps_remaining)
+        while cur_step < phase_end:
+            this_chunk = min(chunk_steps, phase_end - cur_step)
             cb.episode_returns.clear()
             cb.episode_lengths.clear()
 
@@ -181,11 +206,13 @@ def main():
             else:
                 env.venv.env_method("set_opponent_policy", None)
 
+            if _ec_anneal is not None:
+                _ecs, _ece = _ec_anneal
+                model.ent_coef = _ece + (_ecs - _ece) * (1.0 - cur_step / total_steps)
             model.learn(total_timesteps=this_chunk,
                         reset_num_timesteps=False,
                         callback=cb)
             cur_step += this_chunk
-            steps_remaining -= this_chunk
 
             # Save snapshot
             if len(opponent_pool) == 0 or (cur_step % snap_interval == 0):
@@ -194,12 +221,10 @@ def main():
                 elo.get(f"snap_{cur_step}")
 
             elapsed = time.time() - t0
-            print(f"  step={cur_step}/{total_steps}  elapsed={elapsed/60:.1f}min")
-
-            # When --phase is given, we train a single phase to total_timesteps,
-            # not break after one chunk. The break used to short-circuit at
-            # one chunk — that was a bug. Now we just keep going until
-            # steps_remaining == 0 naturally.
+            print(f"  step={cur_step}/{total_steps}  phase {phase} "
+                  f"({cur_step - phase_start}/{budget})  "
+                  f"elapsed={elapsed/60:.1f}min")
+        phase_start = phase_end
 
     model.save(args.save_path)
     env.save(f"{args.save_path}_vecnorm.pkl")
